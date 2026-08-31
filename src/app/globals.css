@@ -1,0 +1,273 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+:root {
+  color-scheme: light dark;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* --------------------------------------------------------------------------
+   Profile surface
+   Everything below reads from the CSS custom properties emitted by
+   `themeToCssVars`, so a profile restyles entirely from its theme document.
+   -------------------------------------------------------------------------- */
+
+.gx-root {
+  min-height: 100dvh;
+  background-color: var(--gx-bg);
+  background-image: var(--gx-surface-image);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color: var(--gx-text);
+  font-family: var(--gx-font-body);
+}
+
+.gx-shell {
+  width: 100%;
+  max-width: 33rem;
+  margin-inline: auto;
+  padding: 0 1.125rem 7rem;
+}
+
+.gx-display {
+  font-family: var(--gx-font-display);
+  letter-spacing: -0.02em;
+}
+
+/* Cards --------------------------------------------------------------- */
+
+.gx-card {
+  background: var(--gx-card-bg);
+  border: var(--gx-card-border);
+  box-shadow: var(--gx-card-shadow);
+  border-radius: var(--gx-radius-card);
+  backdrop-filter: var(--gx-card-blur);
+  -webkit-backdrop-filter: var(--gx-card-blur);
+}
+
+/* A pill radius on a tall card looks broken; clamp it back to something sane. */
+.gx-card--block {
+  border-radius: min(var(--gx-radius-card), 28px);
+}
+
+/* Links --------------------------------------------------------------- */
+
+.gx-link {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border-radius: var(--gx-radius-button);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease;
+  will-change: transform;
+}
+
+@media (hover: hover) {
+  .gx-link:hover {
+    transform: translateY(-2px);
+  }
+  .gx-link:hover .gx-link__chevron {
+    transform: translateX(2px);
+    opacity: 1;
+  }
+}
+
+.gx-link:active {
+  transform: translateY(0) scale(0.988);
+}
+
+.gx-link--featured {
+  background: var(--gx-accent);
+  border-color: transparent;
+  color: var(--gx-accent-ink);
+}
+
+.gx-link--featured .gx-link__sub,
+.gx-link--featured .gx-link__chevron {
+  color: var(--gx-accent-ink);
+  opacity: 0.72;
+}
+
+.gx-link__chevron {
+  transition: transform 160ms ease, opacity 160ms ease;
+  opacity: 0.45;
+  flex: none;
+}
+
+.gx-link__sub {
+  color: var(--gx-text-muted);
+}
+
+.gx-thumb {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: calc(var(--gx-radius-button) * 0.6);
+  object-fit: cover;
+  background: var(--gx-accent-soft);
+}
+
+/* Icon buttons -------------------------------------------------------- */
+
+.gx-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  color: var(--gx-text);
+  background: var(--gx-card-bg);
+  border: var(--gx-card-border);
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1), background-color 160ms ease;
+}
+
+@media (hover: hover) {
+  .gx-icon-btn:hover {
+    transform: translateY(-2px);
+    background: var(--gx-accent);
+    color: var(--gx-accent-ink);
+  }
+}
+
+/* Forms --------------------------------------------------------------- */
+
+.gx-input {
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  border-radius: calc(var(--gx-radius-button) * 0.75);
+  background: color-mix(in srgb, var(--gx-bg) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gx-text) 16%, transparent);
+  color: var(--gx-text);
+  font: inherit;
+  font-size: 0.9375rem;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.gx-input::placeholder {
+  color: var(--gx-text-faint);
+}
+
+.gx-input:focus {
+  outline: none;
+  border-color: var(--gx-accent);
+  box-shadow: 0 0 0 3px var(--gx-accent-soft);
+}
+
+.gx-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.8125rem 1rem;
+  border: 0;
+  border-radius: var(--gx-radius-button);
+  background: var(--gx-accent);
+  color: var(--gx-accent-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1), filter 160ms ease;
+}
+
+@media (hover: hover) {
+  .gx-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+  }
+}
+
+.gx-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Sticky action bar --------------------------------------------------- */
+
+.gx-actionbar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(0.875rem, env(safe-area-inset-bottom));
+  z-index: 40;
+  width: min(calc(100% - 1.75rem), 31rem);
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gx-bg) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gx-text) 12%, transparent);
+  box-shadow: 0 10px 34px -10px rgba(0, 0, 0, 0.4);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+}
+
+/* Listings carousel --------------------------------------------------- */
+
+.gx-scroller {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  /* Bleed to the screen edges so cards feel native on a phone. */
+  margin-inline: -1.125rem;
+  padding-inline: 1.125rem;
+  padding-block: 0.25rem;
+}
+
+.gx-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.gx-scroller > * {
+  scroll-snap-align: start;
+  flex: none;
+}
+
+/* Entrance ------------------------------------------------------------ */
+
+@keyframes gx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.gx-rise {
+  animation: gx-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gx-rise {
+    animation: none;
+  }
+  .gx-link,
+  .gx-icon-btn,
+  .gx-button {
+    transition: none;
+  }
+}

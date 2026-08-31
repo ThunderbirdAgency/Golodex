@@ -1,0 +1,241 @@
+/**
+ * The Golodex page document.
+ *
+ * A whole page — theme, content, contact card — is one JSON document stored on
+ * the `profiles` row. That is deliberate: gifting a page to a real estate agent
+ * from an external system has to be a single API call that returns a live URL,
+ * not a chatty sequence of block inserts.
+ */
+
+export type ThemeMode = "light" | "dark";
+
+/** Page background treatment. */
+export type SurfaceStyle = "solid" | "gradient" | "mesh" | "image";
+
+/** How link/content cards sit on the surface. */
+export type CardStyle = "solid" | "glass" | "outline" | "elevated";
+
+export type RadiusScale = "sharp" | "soft" | "round" | "pill";
+
+/** Font pairings, resolved to real families in `themes.ts`. */
+export type FontPairing =
+  | "modern"      // Inter / Inter
+  | "editorial"   // Instrument Serif / Inter
+  | "warm"        // Fraunces / DM Sans
+  | "technical"   // Space Grotesk / Inter
+  | "classic";    // Libre Baskerville / Source Sans 3
+
+export interface Theme {
+  /** Preset id this theme was derived from, for the editor's "reset" affordance. */
+  preset?: string;
+  mode: ThemeMode;
+  surface: SurfaceStyle;
+  card: CardStyle;
+  radius: RadiusScale;
+  font: FontPairing;
+  /** Primary accent, hex. Drives buttons, focus rings, active states. */
+  accent: string;
+  /** Base page color, hex. For `gradient`/`mesh` this is the anchor color. */
+  background: string;
+  /** Second color for gradient/mesh surfaces. */
+  backgroundAlt?: string;
+  /** Background image URL when surface is `image`. */
+  backgroundImage?: string;
+  /** 0-100. Darkens a background image so text stays legible. */
+  backgroundOverlay?: number;
+}
+
+/* ------------------------------------------------------------------ blocks */
+
+export type BlockType =
+  | "link"
+  | "cta"
+  | "socials"
+  | "video"
+  | "calendar"
+  | "leadform"
+  | "listings"
+  | "testimonial"
+  | "text"
+  | "heading"
+  | "gallery"
+  | "embed";
+
+interface BlockBase {
+  id: string;
+  type: BlockType;
+  /** Hidden blocks stay in the document but do not render. */
+  hidden?: boolean;
+}
+
+export interface LinkBlock extends BlockBase {
+  type: "link";
+  label: string;
+  url: string;
+  /** Small line under the label. */
+  subtitle?: string;
+  /** Square thumbnail shown at the leading edge. */
+  thumbnail?: string;
+  /** Lucide-ish icon name, used when there is no thumbnail. */
+  icon?: string;
+  /** e.g. "New", "Popular" — renders as a pill on the trailing edge. */
+  badge?: string;
+  /** Draws extra attention: accent fill, slight scale on hover. */
+  featured?: boolean;
+}
+
+export interface CtaBlock extends BlockBase {
+  type: "cta";
+  label: string;
+  url: string;
+  subtitle?: string;
+  style?: "primary" | "secondary";
+}
+
+export type SocialPlatform =
+  | "instagram"
+  | "facebook"
+  | "tiktok"
+  | "youtube"
+  | "linkedin"
+  | "x"
+  | "threads"
+  | "pinterest"
+  | "zillow"
+  | "whatsapp"
+  | "website";
+
+export interface SocialsBlock extends BlockBase {
+  type: "socials";
+  items: { platform: SocialPlatform; url: string }[];
+}
+
+export interface VideoBlock extends BlockBase {
+  type: "video";
+  /** YouTube, Vimeo, or a direct mp4. Normalized to an embed at render time. */
+  url: string;
+  title?: string;
+  /** Poster image for direct-file videos. */
+  poster?: string;
+}
+
+export interface CalendarBlock extends BlockBase {
+  type: "calendar";
+  /** GHL / Calendly / Cal.com embed URL. */
+  url: string;
+  title?: string;
+  height?: number;
+}
+
+export interface LeadFormBlock extends BlockBase {
+  type: "leadform";
+  title: string;
+  description?: string;
+  submitLabel?: string;
+  /** Which fields to collect. `name` and one of email/phone are always kept. */
+  fields?: ("name" | "email" | "phone" | "message")[];
+  /** Message shown after a successful submit. */
+  successMessage?: string;
+  /** Tags applied to the resulting CRM contact. */
+  tags?: string[];
+}
+
+export interface Listing {
+  id: string;
+  image: string;
+  price?: string;
+  address?: string;
+  beds?: number;
+  baths?: number;
+  sqft?: number;
+  status?: "For Sale" | "Pending" | "Sold" | "Coming Soon";
+  url?: string;
+}
+
+export interface ListingsBlock extends BlockBase {
+  type: "listings";
+  title?: string;
+  items: Listing[];
+  layout?: "carousel" | "grid";
+}
+
+export interface TestimonialBlock extends BlockBase {
+  type: "testimonial";
+  items: { quote: string; author: string; role?: string; avatar?: string }[];
+}
+
+export interface TextBlock extends BlockBase {
+  type: "text";
+  content: string;
+  align?: "left" | "center";
+}
+
+export interface HeadingBlock extends BlockBase {
+  type: "heading";
+  content: string;
+}
+
+export interface GalleryBlock extends BlockBase {
+  type: "gallery";
+  images: { url: string; caption?: string }[];
+}
+
+export interface EmbedBlock extends BlockBase {
+  type: "embed";
+  url: string;
+  title?: string;
+  height?: number;
+}
+
+export type Block =
+  | LinkBlock
+  | CtaBlock
+  | SocialsBlock
+  | VideoBlock
+  | CalendarBlock
+  | LeadFormBlock
+  | ListingsBlock
+  | TestimonialBlock
+  | TextBlock
+  | HeadingBlock
+  | GalleryBlock
+  | EmbedBlock;
+
+/* ----------------------------------------------------------------- profile */
+
+/** Everything needed to build the .vcf a visitor saves to their phone. */
+export interface ContactCard {
+  firstName: string;
+  lastName?: string;
+  organization?: string;
+  title?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  address?: string;
+  /** Shown under the compliance line, e.g. "NMLS #123456". */
+  license?: string;
+}
+
+export interface Profile {
+  id: string;
+  /** The vanity path: golodex.com/<slug>. */
+  slug: string;
+  displayName: string;
+  /** One line under the name: "Mortgage Advisor · Glendale, AZ". */
+  headline?: string;
+  bio?: string;
+  avatar?: string;
+  /** Wide image behind the avatar. */
+  cover?: string;
+  /** Small logo shown beside the name — brokerage, team, lender. */
+  logo?: string;
+  verified?: boolean;
+  theme: Theme;
+  blocks: Block[];
+  contact?: ContactCard;
+  /** Fine print rendered in the footer — required for NMLS/brokerage pages. */
+  disclosure?: string;
+  seo?: { title?: string; description?: string; image?: string };
+  status: "draft" | "published" | "claimable";
+}
