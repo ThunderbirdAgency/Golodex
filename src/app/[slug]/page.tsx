@@ -49,7 +49,7 @@ export default async function ProfilePage({ params }: Params) {
       <ViewTracker slug={profile.slug} />
       <div className="gx-shell">
         <ProfileHeader profile={profile} />
-        <Blocks blocks={profile.blocks} slug={profile.slug} />
+        <Blocks blocks={profile.blocks} slug={profile.slug} ownerName={profile.displayName} />
 
         {profile.disclosure ? (
           <p

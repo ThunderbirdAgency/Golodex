@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { findSeedProfile } from "@/data/seed";
 import { PhonePreview } from "@/components/marketing/PhonePreview";
-import { BadgeCheck, CalendarIcon, Check, MapPin, UserPlus } from "@/components/icons";
+import { Check, MapPin, UserPlus } from "@/components/icons";
 
 export const metadata: Metadata = {
-  title: "Golodex — one link that puts you in their phone",
+  title: "Golodex — your digital business card",
   description:
-    "A beautiful bio link built for real estate, mortgage, and service pros. Save-to-contacts, live listings, and every lead straight into your CRM.",
+    "One beautiful page that says who you are, what you do, and why it matters. Save-to-contacts, a QR code for anywhere, and an AI assistant that answers for you.",
 };
 
 const FEATURES = [
@@ -14,35 +14,36 @@ const FEATURES = [
     icon: UserPlus,
     title: "Land in their phone book",
     body:
-      "One tap saves your photo, title, and number as a real contact. Linktree sends traffic away; Golodex makes you permanent.",
+      "One tap saves your photo, title, and number as a real contact. A link gets forgotten in a browser tab; a contact card stays.",
+  },
+  {
+    icon: Sparkle,
+    title: "An assistant that answers for you",
+    body:
+      "Visitors ask questions at midnight and get a real answer about you \u2014 drawn only from your page, and always honest that it's an assistant.",
+  },
+  {
+    icon: QrIcon,
+    title: "A QR code for anywhere",
+    body:
+      "Business cards, yard signs, name badges, a phone held across a table. Print it at any size and it still scans.",
   },
   {
     icon: MapPin,
-    title: "Listings that scroll",
-    body:
-      "Show active listings, price, beds and baths in a swipeable carousel — no other bio-link tool ships this out of the box.",
-  },
-  {
-    icon: CalendarIcon,
-    title: "Booking and forms inline",
-    body:
-      "Visitors book a call or ask a question without leaving the page. Every submission becomes a tagged CRM contact instantly.",
-  },
-  {
-    icon: BadgeCheck,
     title: "Built to be gifted",
     body:
-      "One API call creates a finished page. Hand out a thousand as closing gifts and each one still looks custom-made.",
+      "One API call creates a finished page. Hand out a thousand as closing gifts and each one still looks made for that person.",
   },
 ];
 
 const COMPARISON = [
   { feature: "Save-to-contacts (.vcf)", golodex: true, linktree: false, stan: false },
-  { feature: "Property listing carousel", golodex: true, linktree: false, stan: false },
+  { feature: "QR code, print-ready", golodex: true, linktree: true, stan: false },
+  { feature: "AI assistant that answers about you", golodex: true, linktree: false, stan: false },
+  { feature: "A real \u201cwho I am\u201d section", golodex: true, linktree: false, stan: false },
+  { feature: "Work examples & proof", golodex: true, linktree: false, stan: false },
   { feature: "Leads pushed into your CRM", golodex: true, linktree: false, stan: false },
-  { feature: "Inline booking calendar", golodex: true, linktree: false, stan: true },
   { feature: "Bulk-create pages via API", golodex: true, linktree: false, stan: false },
-  { feature: "Compliance / license footer", golodex: true, linktree: false, stan: false },
 ];
 
 export default function HomePage() {
@@ -71,17 +72,17 @@ export default function HomePage() {
         <div>
           <span className="inline-flex items-center gap-2 rounded-full border border-[#e3e0da] bg-white px-3 py-1.5 text-xs font-semibold text-[#5a6069]">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Built for agents, lenders &amp; service pros
+            The digital business card, done properly
           </span>
 
           <h1 className="mt-5 text-[2.75rem] font-bold leading-[1.05] tracking-[-0.03em] text-balance sm:text-[3.5rem]">
-            One link that puts you in their phone.
+            Be found. Be understood.
           </h1>
 
           <p className="mt-5 max-w-lg text-[1.0625rem] leading-relaxed text-[#5a6069]">
-            Golodex is the modern rolodex — a page beautiful enough to post on your
-            Instagram, with save-to-contacts, live listings, and every lead routed
-            straight into your CRM.
+            Golodex is one beautiful page that says who you are, what you do, and
+            why it matters — so the person looking you up can actually decide
+            about you. Scan it, save it, share it.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -111,7 +112,7 @@ export default function HomePage() {
       <section className="border-y border-[#ece9e3] bg-white py-20">
         <div className="mx-auto max-w-6xl px-6">
           <h2 className="max-w-2xl text-[2rem] font-bold leading-tight tracking-[-0.02em] text-balance">
-            Everything a link-in-bio does, plus the things that actually win business.
+            A list of links tells people where to click. A Golodex tells them who you are.
           </h2>
 
           <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -135,8 +136,9 @@ export default function HomePage() {
             How it compares
           </h2>
           <p className="mt-3 max-w-xl text-[0.9375rem] leading-relaxed text-[#5a6069]">
-            Linktree was built for musicians. Stan Store was built for course
-            creators. Golodex is built for people who close deals in person.
+            Linktree was built for musicians to route traffic. Stan Store was built
+            for creators to sell courses. Golodex is for people whose business runs
+            on being known and trusted — not on checkout.
           </p>
 
           <div className="mt-8 overflow-x-auto">
@@ -227,6 +229,26 @@ Authorization: Bearer gx_live_…
         </div>
       </footer>
     </main>
+  );
+}
+
+function Sparkle({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
+      <path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" />
+    </svg>
+  );
+}
+
+function QrIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <path d="M14 14h3v3h-3zM20 14v.01M14 20v.01M20 20v.01M17.5 20.5v.01M20.5 17.5v.01" />
+    </svg>
   );
 }
 

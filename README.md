@@ -62,11 +62,19 @@ a live URL, and the whole page renders from one indexed lookup by slug.
 
 ### Block types
 
-`link` · `cta` · `socials` · `video` · `calendar` · `leadform` · `listings` ·
-`testimonial` · `text` · `heading` · `gallery` · `embed`
+`about` · `work` · `agent` · `link` · `cta` · `socials` · `video` · `calendar` ·
+`leadform` · `listings` · `testimonial` · `text` · `heading` · `gallery` · `embed`
 
-`listings` (a swipeable property carousel with price/beds/baths/status) and the
-`.vcf` contact download are the two things no competitor ships out of the box.
+The product is a digital business card, not a storefront — so the blocks that
+carry it are the ones that explain a person:
+
+- **`about`** — *who I am / what I do / why it matters*, plus up to three proof
+  facts. A visitor should be able to decide about someone from this block alone.
+- **`work`** — examples of things they've actually done.
+- **`agent`** — an AI assistant that answers a stranger's questions about them.
+
+Together with the `.vcf` download and the QR code, those are what no competitor
+ships.
 
 ### Themes
 
@@ -77,6 +85,69 @@ Only `accent` and `background` come from the user. Every other color — text,
 muted text, borders, card fills, button ink — is **derived** in
 `themeToCssVars()`. An agent picking a brand color on their phone cannot produce
 an unreadable page, because button label contrast is computed, not guessed.
+
+---
+
+## The builder
+
+`/edit/:slug` is the logged-in page builder. Two properties matter:
+
+- **The preview is the real renderer.** The phone on the right runs the same
+  components that serve the live page, so what someone builds is exactly what a
+  visitor gets — not an approximation.
+- **Forms are generated, not hand-written.** Every block's editor comes from a
+  descriptor in `src/lib/blockdefs.ts`. Adding a block type means adding one
+  entry there plus a renderer; the editor needs no changes.
+
+Four tabs: **Content** (add / reorder / hide / edit blocks), **Design** (ten
+presets plus accent, background, mood, cards, corners and type), **You** (header,
+contact card, disclosure) and **Share** (QR download, link).
+
+### Saving is closed by default
+
+Per-user authentication **does not exist yet**. `PUT /api/builder/:slug` writes
+only when `GOLODEX_EDITOR_TOKEN` is set and the browser presents a matching
+`gx_editor` cookie. Without it the endpoint returns 503 and the builder opens in
+preview mode.
+
+That is a single-operator lock for preview deploys: **one token currently grants
+edit rights to every page.** It is correct for one person and wrong the moment a
+second person signs up — real per-account auth has to land before the builder is
+opened to customers.
+
+---
+
+## The AI page assistant
+
+The `agent` block answers a visitor's questions about the page owner, grounded
+only in that page's own content plus a private `knowledge` note the owner writes
+in the builder.
+
+Two rules shape the whole design:
+
+1. **It is an assistant *about* the person, never the person.** It speaks in the
+   third person and says plainly that it's an assistant if asked. A visitor who
+   thinks they're messaging the actual agent and later learns otherwise is a
+   trust failure on a page whose entire job is trust.
+2. **It never invents facts.** Rates, pricing, availability, timelines and
+   credentials are exactly what strangers ask and exactly what causes real harm
+   when guessed, so an unknown becomes a handoff to the booking link.
+
+Runs on `claude-opus-5` at `effort: "low"` (visitors want an instant reply, not
+a considered essay), with the page facts under a cache breakpoint since they're
+identical across every visitor's turn. Needs `ANTHROPIC_API_KEY`; without it the
+block returns a clear "not switched on yet" message.
+
+---
+
+## QR codes
+
+`/:slug/qr` — SVG by default, `?format=png&size=2048` for print.
+
+Error-correction level **H** (~30% recoverable) with a real quiet zone, because
+this is the bridge from the physical world: business cards, yard signs, name
+badges, a phone held up across a table. Caller-supplied colors are accepted only
+as plain hex, so nobody can generate a light-on-light code that won't scan.
 
 ---
 
@@ -232,7 +303,8 @@ src/
     api/v1/pages/                automation API
   components/
     icons.tsx                    one hand-built icon family
-    profile/                     header, blocks, lead form, action bar, media
+    profile/                     header, blocks, lead form, action bar, agent chat
+    builder/                     the page builder and its generated forms
     marketing/PhonePreview.tsx   live theme switcher on the homepage
   lib/
     types.ts     document model          themes.ts   theme engine + presets
@@ -246,8 +318,14 @@ src/
 
 ## Not built yet
 
-- **Self-serve editor / dashboard.** Pages are created via the API or seed today.
-- **Auth and the claim flow.** `claim_token` is generated and stored; the
-  `/claim/:token` route that binds a gifted page to a new login is not written.
+- **Per-account auth.** The single biggest gap. The builder exists and works,
+  but it is gated behind one shared operator token (see above). Nothing
+  multi-user ships until this does.
+- **The claim flow.** `claim_token` is generated and stored; the `/claim/:token`
+  route that binds a gifted page to a new login is not written.
+- **Image uploads.** Photo fields take URLs; there's no uploader wired to
+  Supabase Storage yet.
+- **Drag-and-drop reordering.** Blocks reorder with up/down buttons, which are
+  more reliable and more accessible; DnD is a polish item.
 - **Billing.** No Stripe; `plan` is set by the caller and trusted.
 - **Custom domains** for pro customers.

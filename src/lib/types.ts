@@ -59,7 +59,10 @@ export type BlockType =
   | "text"
   | "heading"
   | "gallery"
-  | "embed";
+  | "embed"
+  | "about"
+  | "work"
+  | "agent";
 
 interface BlockBase {
   id: string;
@@ -187,6 +190,70 @@ export interface EmbedBlock extends BlockBase {
   height?: number;
 }
 
+/**
+ * "This is who I am, this is what I do, this is why it matters."
+ *
+ * The centerpiece of a Golodex page. A visitor should be able to decide whether
+ * they want to work with this person from this block alone — which is the whole
+ * difference between a link list and a digital business card.
+ */
+export interface AboutBlock extends BlockBase {
+  type: "about";
+  /** Section label, e.g. "About me". */
+  title?: string;
+  /** Who I am — a short paragraph in the person's own voice. */
+  who: string;
+  /** What I do — the concrete service or role. */
+  what?: string;
+  /** Why it matters — the reason a stranger should care. */
+  why?: string;
+  /** Optional portrait shown alongside the copy. */
+  image?: string;
+  /** Short proof points: "12 years in the Valley", "300+ closings". */
+  facts?: { label: string; value: string }[];
+}
+
+/** Examples of work: projects, closings, builds, case studies, press. */
+export interface WorkBlock extends BlockBase {
+  type: "work";
+  title?: string;
+  layout?: "carousel" | "grid";
+  items: {
+    id: string;
+    title: string;
+    description?: string;
+    image?: string;
+    /** e.g. "2024", "Case study", "Featured in AZ Republic". */
+    tag?: string;
+    url?: string;
+  }[];
+}
+
+/**
+ * An AI concierge that answers questions about the page owner.
+ *
+ * Grounded strictly in the page's own content and explicitly labelled as an
+ * assistant, never as the person. A visitor who believes they are messaging the
+ * actual agent and later learns otherwise is a trust failure on a page whose
+ * entire job is trust.
+ */
+export interface AgentBlock extends BlockBase {
+  type: "agent";
+  /** Heading, e.g. "Ask about Jordan". */
+  title?: string;
+  /** Opening line the assistant shows before the visitor types. */
+  greeting?: string;
+  /** Tap-to-send starter questions. */
+  suggestions?: string[];
+  /**
+   * Extra private context the assistant may use when answering — hours,
+   * service area, specialties, things not written elsewhere on the page.
+   */
+  knowledge?: string;
+  /** Offer the lead form once the visitor shows real intent. */
+  captureLeads?: boolean;
+}
+
 export type Block =
   | LinkBlock
   | CtaBlock
@@ -199,7 +266,10 @@ export type Block =
   | TextBlock
   | HeadingBlock
   | GalleryBlock
-  | EmbedBlock;
+  | EmbedBlock
+  | AboutBlock
+  | WorkBlock
+  | AgentBlock;
 
 /* ----------------------------------------------------------------- profile */
 

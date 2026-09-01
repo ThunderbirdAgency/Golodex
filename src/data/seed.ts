@@ -78,6 +78,31 @@ const hlt: Profile = {
       url: "https://erikmiller.team/home-buyers-guide",
     },
     {
+      id: "about",
+      type: "about",
+      title: "Who I am",
+      who: "I'm Erik. I've been doing mortgages in the West Valley long enough to know that most people don't want a lecture on rate sheets \u2014 they want a straight answer about what they can afford and what it'll cost them.",
+      what: "I handle purchases, refinances, and first-time buyers across Arizona.",
+      why: "A mortgage is the biggest number most people ever sign their name to. You should understand it before you sign, not after.",
+      facts: [
+        { label: "Based in", value: "Glendale, AZ" },
+        { label: "Licensed in", value: "Arizona" },
+      ],
+    },
+    {
+      id: "assistant",
+      type: "agent",
+      title: "Ask me anything",
+      greeting:
+        "Hi \u2014 I'm Erik's assistant. Ask me about the loan process, what he handles, or how to get started.",
+      suggestions: [
+        "What's the first step to buying?",
+        "Do you work with first-time buyers?",
+        "What areas do you cover?",
+      ],
+      captureLeads: true,
+    },
+    {
       id: "leadform",
       type: "leadform",
       title: "Not ready to book?",
@@ -156,6 +181,58 @@ const demo: Profile = {
       featured: true,
       badge: "Popular",
       url: "https://example.com/valuation",
+    },
+    {
+      id: "about",
+      type: "about",
+      title: "About me",
+      who: "I've lived in the Valley my whole life and I've been selling here since 2019. Most of my clients come from someone I've already worked with.",
+      what: "I represent buyers and sellers across Scottsdale, Arcadia, Tempe and Phoenix.",
+      why: "Moving is stressful enough. My job is to make sure you always know what's happening next and never feel rushed into a decision.",
+      facts: [
+        { label: "Since", value: "2019" },
+        { label: "Families moved", value: "120+" },
+        { label: "Avg. days", value: "18" },
+      ],
+    },
+    {
+      id: "assistant",
+      type: "agent",
+      title: "Ask about Jordan",
+      greeting:
+        "Hi \u2014 I'm Jordan's assistant. Ask me about her listings, the areas she covers, or how she works.",
+      suggestions: [
+        "What areas does she cover?",
+        "How does she work with buyers?",
+        "What's currently for sale?",
+      ],
+      captureLeads: true,
+    },
+    {
+      id: "work",
+      type: "work",
+      title: "Recent moves",
+      layout: "carousel",
+      items: [
+        {
+          id: "w1",
+          title: "Arcadia bungalow, sold in 9 days",
+          tag: "2025",
+          description: "Listed at $690k, closed at $730k after a three-offer weekend.",
+        },
+        {
+          id: "w2",
+          title: "First-time buyers, Tempe",
+          tag: "2025",
+          description: "Found a 3-bed under budget in a market with almost no inventory.",
+        },
+        {
+          id: "w3",
+          title: "Relocation from Seattle",
+          tag: "2024",
+          description: "Toured 14 homes over one weekend and closed remotely in 22 days.",
+        },
+      ],
     },
     {
       id: "listings",

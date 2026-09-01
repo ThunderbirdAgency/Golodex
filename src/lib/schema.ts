@@ -130,6 +130,48 @@ export const BlockSchema = z.discriminatedUnion("type", [
     title: z.string().max(160).optional(),
     height: z.number().int().min(200).max(1400).optional(),
   }),
+  z.object({
+    ...base,
+    type: z.literal("about"),
+    title: z.string().max(120).optional(),
+    who: z.string().min(1).max(1200),
+    what: z.string().max(1200).optional(),
+    why: z.string().max(1200).optional(),
+    image: z.string().url().optional(),
+    facts: z
+      .array(z.object({ label: z.string().max(40), value: z.string().max(40) }))
+      .max(3)
+      .optional(),
+  }),
+  z.object({
+    ...base,
+    type: z.literal("work"),
+    title: z.string().max(120).optional(),
+    layout: z.enum(["carousel", "grid"]).optional(),
+    items: z
+      .array(
+        z.object({
+          id: z.string().max(64),
+          title: z.string().min(1).max(120),
+          description: z.string().max(400).optional(),
+          image: z.string().url().optional(),
+          tag: z.string().max(40).optional(),
+          url: z.string().max(2000).optional(),
+        }),
+      )
+      .max(30),
+  }),
+  z.object({
+    ...base,
+    type: z.literal("agent"),
+    title: z.string().max(120).optional(),
+    greeting: z.string().max(400).optional(),
+    suggestions: z.array(z.string().max(120)).max(4).optional(),
+    // Private context the assistant may draw on. Capped: this is prompt
+    // context, not a knowledge base.
+    knowledge: z.string().max(4000).optional(),
+    captureLeads: z.boolean().optional(),
+  }),
 ]);
 
 export const ContactCardSchema = z.object({
