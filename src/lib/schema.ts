@@ -25,7 +25,11 @@ export const SocialPlatformSchema = z.enum([
   "x", "threads", "pinterest", "zillow", "whatsapp", "website",
 ]);
 
-const base = { id: z.string().min(1).max(64), hidden: z.boolean().optional() };
+const base = {
+  id: z.string().min(1).max(64),
+  hidden: z.boolean().optional(),
+  locked: z.boolean().optional(),
+};
 
 export const BlockSchema = z.discriminatedUnion("type", [
   z.object({

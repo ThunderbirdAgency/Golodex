@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Block, BlockType, Profile, Theme } from "@/lib/types";
 import { THEME_PRESETS, themeStyle } from "@/lib/themes";
 import { ADD_MENU_ORDER, BLOCK_DEFS, newBlockId } from "@/lib/blockdefs";
@@ -16,7 +16,7 @@ import { Fields } from "./Fields";
  * what someone builds here is exactly what a visitor gets.
  */
 
-type Tab = "content" | "design" | "profile" | "share";
+type Tab = "content" | "design" | "profile" | "share" | "history";
 type Rec = Record<string, unknown>;
 
 const TABS: { id: Tab; label: string }[] = [
@@ -24,10 +24,25 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "design", label: "Design" },
   { id: "profile", label: "You" },
   { id: "share", label: "Share" },
+  { id: "history", label: "History" },
 ];
 
-export function Builder({ initial, canSave }: { initial: Profile; canSave: boolean }) {
+export function Builder({
+  initial,
+  canSave,
+  isStaff = false,
+  ownerEmail,
+}: {
+  initial: Profile;
+  canSave: boolean;
+  /** Staff may edit and set locks; owners may not. */
+  isStaff?: boolean;
+  ownerEmail?: string;
+}) {
   const [profile, setProfile] = useState<Profile>(initial);
+  /** Undo stack. Bounded, because this is a safety net not a time machine. */
+  const [history, setHistory] = useState<Profile[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("content");
   const [openBlock, setOpenBlock] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -37,9 +52,22 @@ export function Builder({ initial, canSave }: { initial: Profile; canSave: boole
   const [error, setError] = useState<string | null>(null);
 
   const patch = useCallback((p: Partial<Profile>) => {
-    setProfile((prev) => ({ ...prev, ...p }));
+    setProfile((prev) => {
+      setHistory((h) => [...h.slice(-49), prev]);
+      return { ...prev, ...p };
+    });
     setDirty(true);
     setSaved(null);
+  }, []);
+
+  const undo = useCallback(() => {
+    setHistory((h) => {
+      if (!h.length) return h;
+      setProfile(h[h.length - 1]);
+      setDirty(true);
+      setSaved(null);
+      return h.slice(0, -1);
+    });
   }, []);
 
   const setBlocks = useCallback(
@@ -47,22 +75,19 @@ export function Builder({ initial, canSave }: { initial: Profile; canSave: boole
     [patch],
   );
 
-  const updateBlock = useCallback(
-    (id: string, p: Rec) =>
-      setProfile((prev) => {
-        const blocks = prev.blocks.map((b) => (b.id === id ? ({ ...b, ...p } as Block) : b));
-        return { ...prev, blocks };
-      }),
-    [],
-  );
-
   const onBlockChange = useCallback(
     (id: string, p: Rec) => {
-      updateBlock(id, p);
+      setProfile((prev) => {
+        setHistory((h) => [...h.slice(-49), prev]);
+        return {
+          ...prev,
+          blocks: prev.blocks.map((b) => (b.id === id ? ({ ...b, ...p } as Block) : b)),
+        };
+      });
       setDirty(true);
       setSaved(null);
     },
-    [updateBlock],
+    [],
   );
 
   function move(index: number, delta: number) {
@@ -94,6 +119,7 @@ export function Builder({ initial, canSave }: { initial: Profile; canSave: boole
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.error ?? "Could not save.");
       setDirty(false);
+      setHistory([]);
       setSaved("Saved");
       setTimeout(() => setSaved(null), 2500);
     } catch (err) {
@@ -124,6 +150,15 @@ export function Builder({ initial, canSave }: { initial: Profile; canSave: boole
               <span className="text-[0.8125rem] text-[#8a9099]">Unsaved changes</span>
             ) : null}
 
+            <button
+              type="button"
+              onClick={undo}
+              disabled={!history.length}
+              title="Undo (nothing is saved until you press Save)"
+              className="rounded-full border border-[#dcd8d1] bg-white px-3.5 py-2 text-[0.8125rem] font-semibold disabled:opacity-35"
+            >
+              Undo
+            </button>
             <a
               href={`/${profile.slug}`}
               target="_blank"
@@ -177,11 +212,18 @@ export function Builder({ initial, canSave }: { initial: Profile; canSave: boole
                 setOpenBlock={setOpenBlock}
                 onChange={onBlockChange}
                 onMove={move}
+                confirmDelete={confirmDelete}
+                setConfirmDelete={setConfirmDelete}
                 onRemove={(id) => {
                   setBlocks(profile.blocks.filter((b) => b.id !== id));
                   setOpenBlock(null);
+                  setConfirmDelete(null);
                 }}
                 onToggleHidden={(id, hidden) => onBlockChange(id, { hidden })}
+                onToggleLock={
+                  isStaff ? (id, locked) => onBlockChange(id, { locked }) : undefined
+                }
+                isStaff={isStaff}
                 adding={adding}
                 setAdding={setAdding}
                 onAdd={addBlock}
@@ -195,6 +237,10 @@ export function Builder({ initial, canSave }: { initial: Profile; canSave: boole
             {tab === "profile" ? <ProfileTab profile={profile} onChange={patch} /> : null}
 
             {tab === "share" ? <ShareTab slug={profile.slug} /> : null}
+
+            {tab === "history" ? (
+              <HistoryTab slug={profile.slug} canRestore={canSave} />
+            ) : null}
           </div>
         </div>
 
@@ -242,6 +288,10 @@ function ContentTab({
   onMove,
   onRemove,
   onToggleHidden,
+  onToggleLock,
+  isStaff,
+  confirmDelete,
+  setConfirmDelete,
   adding,
   setAdding,
   onAdd,
@@ -253,6 +303,11 @@ function ContentTab({
   onMove: (index: number, delta: number) => void;
   onRemove: (id: string) => void;
   onToggleHidden: (id: string, hidden: boolean) => void;
+  /** Present only for staff. */
+  onToggleLock?: (id: string, locked: boolean) => void;
+  isStaff: boolean;
+  confirmDelete: string | null;
+  setConfirmDelete: (id: string | null) => void;
   adding: boolean;
   setAdding: (v: boolean) => void;
   onAdd: (type: BlockType) => void;
@@ -272,12 +327,17 @@ function ContentTab({
         {blocks.map((block, i) => {
           const def = BLOCK_DEFS[block.type];
           const open = openBlock === block.id;
+          // Locked blocks are read-only for owners and fully editable by staff.
+          const readOnly = Boolean(block.locked) && !isStaff;
 
           return (
             <div
               key={block.id}
-              className="rounded-xl border border-[#e3e0da] bg-white"
-              style={{ opacity: block.hidden ? 0.55 : 1 }}
+              className="rounded-xl border bg-white"
+              style={{
+                opacity: block.hidden ? 0.55 : 1,
+                borderColor: block.locked ? "#dcd6c6" : "#e3e0da",
+              }}
             >
               <div className="flex items-center gap-1 px-3 py-2.5">
                 <button
@@ -286,12 +346,32 @@ function ContentTab({
                   onClick={() => setOpenBlock(open ? null : block.id)}
                   aria-expanded={open}
                 >
-                  <span className="block text-[0.875rem] font-semibold">{def.label}</span>
+                  <span className="flex items-center gap-1.5 text-[0.875rem] font-semibold">
+                    {def.label}
+                    {block.locked ? (
+                      <span
+                        title={
+                          isStaff
+                            ? "Locked — customers can't change this"
+                            : "Set up by Golodex. You can move or hide it, but not change it."
+                        }
+                        className="text-[#9a8f6d]"
+                        aria-label="Locked"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <rect x="4" y="10.5" width="16" height="10.5" rx="2" />
+                          <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" />
+                        </svg>
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="mt-0.5 block truncate text-[0.75rem] text-[#8a9099]">
                     {summarize(block)}
                   </span>
                 </button>
 
+                {/* Reordering and hiding stay available even when locked —
+                    they're reversible and visible. */}
                 <SmallBtn label="Move up" onClick={() => onMove(i, -1)} disabled={i === 0}>↑</SmallBtn>
                 <SmallBtn
                   label="Move down"
@@ -306,16 +386,64 @@ function ContentTab({
                 >
                   {block.hidden ? "◌" : "●"}
                 </SmallBtn>
-                <SmallBtn label="Delete" onClick={() => onRemove(block.id)}>×</SmallBtn>
+
+                {onToggleLock ? (
+                  <SmallBtn
+                    label={block.locked ? "Unlock for the customer" : "Lock so the customer can't change it"}
+                    onClick={() => onToggleLock(block.id, !block.locked)}
+                  >
+                    {block.locked ? "🔒" : "🔓"}
+                  </SmallBtn>
+                ) : null}
+
+                <SmallBtn
+                  label="Delete"
+                  onClick={() => setConfirmDelete(block.id)}
+                  disabled={readOnly}
+                >
+                  ×
+                </SmallBtn>
               </div>
+
+              {confirmDelete === block.id ? (
+                <div className="flex flex-wrap items-center gap-2 border-t border-[#f6e6c8] bg-[#fdf8ec] px-3 py-2.5">
+                  <span className="text-[0.8125rem] text-[#7a5c17]">
+                    Delete this {def.label.toLowerCase()}?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onRemove(block.id)}
+                    className="rounded-full bg-[#14161a] px-3 py-1 text-[0.75rem] font-semibold text-white"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(null)}
+                    className="rounded-full border border-[#dcd8d1] bg-white px-3 py-1 text-[0.75rem] font-semibold"
+                  >
+                    Keep it
+                  </button>
+                  <span className="text-[0.75rem] text-[#a08a4d]">Undo also works.</span>
+                </div>
+              ) : null}
 
               {open ? (
                 <div className="border-t border-[#f0ede7] p-4">
-                  <Fields
-                    defs={def.fields}
-                    value={block as unknown as Rec}
-                    onChange={(p) => onChange(block.id, p)}
-                  />
+                  {readOnly ? (
+                    <p className="mb-3 rounded-lg bg-[#faf6ec] px-3 py-2 text-[0.8125rem] leading-snug text-[#7a5c17]">
+                      Golodex set this up for you, so it can&apos;t be edited here — that&apos;s
+                      what keeps your page working. You can still move it or hide it. Need a
+                      change? Just ask us.
+                    </p>
+                  ) : null}
+                  <fieldset disabled={readOnly} style={{ border: 0, margin: 0, padding: 0 }}>
+                    <Fields
+                      defs={def.fields}
+                      value={block as unknown as Rec}
+                      onChange={(p) => onChange(block.id, p)}
+                    />
+                  </fieldset>
                 </div>
               ) : null}
             </div>
@@ -759,6 +887,130 @@ function ShareTab({ slug }: { slug: string }) {
           </button>
         </div>
       </section>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- history */
+
+interface VersionRow {
+  id: string;
+  created_at: string;
+  source: string;
+}
+
+/**
+ * Every save snapshots the previous document, so "I broke my page" is
+ * self-service. This is what makes it safe to hand someone the builder.
+ */
+function HistoryTab({ slug, canRestore }: { slug: string; canRestore: boolean }) {
+  const [versions, setVersions] = useState<VersionRow[] | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/builder/${slug}/versions`);
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body?.error ?? "Could not load history.");
+        if (live) setVersions(body.versions ?? []);
+      } catch (err) {
+        if (live) {
+          setVersions([]);
+          setError(err instanceof Error ? err.message : "Could not load history.");
+        }
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [slug]);
+
+  async function restore(id: string) {
+    setBusy(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/builder/${slug}/versions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ versionId: id }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error ?? "Could not restore.");
+      // Reload so the editor and preview both show the restored document.
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not restore.");
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-[#e3e0da] bg-white p-5">
+      <h3 className="text-[0.875rem] font-semibold">Earlier versions</h3>
+      <p className="mt-1 text-[0.75rem] leading-snug text-[#7c828c]">
+        We keep the last twenty saves. If something looks wrong, put it back —
+        restoring is itself undoable.
+      </p>
+
+      {error ? (
+        <p className="mt-3 text-[0.8125rem] text-[#c62a2a]" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      {versions === null ? (
+        <p className="mt-4 text-[0.8125rem] text-[#8a9099]">Loading…</p>
+      ) : versions.length === 0 ? (
+        <p className="mt-4 text-[0.8125rem] text-[#8a9099]">
+          No earlier versions yet — they appear once you&apos;ve saved a change.
+        </p>
+      ) : (
+        <ul className="mt-4 divide-y divide-[#f0ede7]">
+          {versions.map((v) => (
+            <li key={v.id} className="flex flex-wrap items-center gap-2 py-2.5">
+              <span className="text-[0.8125rem]">
+                {new Date(v.created_at).toLocaleString()}
+              </span>
+              <span className="text-[0.75rem] text-[#8a9099]">
+                {v.source === "staff" ? "changed by Golodex" : v.source === "api" ? "via API" : "changed by you"}
+              </span>
+
+              {confirming === v.id ? (
+                <span className="ml-auto flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={busy === v.id}
+                    onClick={() => restore(v.id)}
+                    className="rounded-full bg-[#14161a] px-3 py-1 text-[0.75rem] font-semibold text-white disabled:opacity-40"
+                  >
+                    {busy === v.id ? "Restoring…" : "Yes, restore"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(null)}
+                    className="rounded-full border border-[#dcd8d1] px-3 py-1 text-[0.75rem] font-semibold"
+                  >
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!canRestore}
+                  onClick={() => setConfirming(v.id)}
+                  className="ml-auto rounded-full border border-[#dcd8d1] px-3 py-1 text-[0.75rem] font-semibold disabled:opacity-40"
+                >
+                  Restore
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

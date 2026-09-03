@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getProfileBySlug, markLeadSynced, recordLead } from "@/lib/repo";
 import { addContactNote, resolveLeadDestination, upsertContact } from "@/lib/ghl";
+import { clientIp, rateLimit } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,16 @@ const LeadSchema = z.object({
 const clean = (v?: string) => (v && v.trim() ? v.trim() : undefined);
 
 export async function POST(req: Request) {
+  // Public and it writes to the database and the CRM, so it is the most
+  // abusable endpoint on the site.
+  const limit = rateLimit(`leads:${clientIp(req)}`, 8, 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many submissions. Try again shortly." },
+      { status: 429, headers: { "retry-after": String(limit.retryAfter) } },
+    );
+  }
+
   let payload: unknown;
   try {
     payload = await req.json();

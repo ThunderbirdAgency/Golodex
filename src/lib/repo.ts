@@ -1,6 +1,7 @@
 import type { Profile } from "./types";
 import { supabaseAdmin, supabasePublic } from "./supabase";
 import { findSeedProfile, SEED_PROFILES } from "@/data/seed";
+import { normalizeSlug } from "./slug";
 
 /**
  * Profile persistence.
@@ -30,12 +31,16 @@ function rowToProfile(row: Record<string, unknown>): ProfileRecord {
 
 export async function getProfileBySlug(slug: string): Promise<ProfileRecord | null> {
   const client = supabaseAdmin() ?? supabasePublic();
+  // Exact match on a normalized slug. `ilike` would treat `%` and `_` in the
+  // request path as wildcards, so `/%` could return somebody else's page.
+  const key = normalizeSlug(slug);
+  if (!key) return null;
 
   if (client) {
     const { data, error } = await client
       .from("profiles")
       .select("id, slug, status, doc, ghl_location_id")
-      .ilike("slug", slug)
+      .eq("slug", key)
       .maybeSingle();
 
     // A transport/permission error should not silently degrade to seed data in
@@ -46,7 +51,7 @@ export async function getProfileBySlug(slug: string): Promise<ProfileRecord | nu
     if (data) return rowToProfile(data as Record<string, unknown>);
   }
 
-  return findSeedProfile(slug);
+  return findSeedProfile(key);
 }
 
 export async function listPublishedSlugs(): Promise<string[]> {
@@ -69,11 +74,14 @@ export async function listPublishedSlugs(): Promise<string[]> {
 }
 
 export async function slugIsTaken(slug: string): Promise<boolean> {
-  if (findSeedProfile(slug)) return true;
+  const key = normalizeSlug(slug);
+  if (!key) return true;
+  if (findSeedProfile(key)) return true;
+
   const client = supabaseAdmin();
   if (!client) return false;
 
-  const { data } = await client.from("profiles").select("id").ilike("slug", slug).maybeSingle();
+  const { data } = await client.from("profiles").select("id").eq("slug", key).maybeSingle();
   return Boolean(data);
 }
 
@@ -125,7 +133,7 @@ export async function updateProfileDoc(
   const { data, error } = await client
     .from("profiles")
     .update(patch)
-    .ilike("slug", slug)
+    .eq("slug", normalizeSlug(slug))
     .select("id, slug, status, doc, ghl_location_id")
     .single();
 

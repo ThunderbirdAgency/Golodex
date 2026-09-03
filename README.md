@@ -103,17 +103,81 @@ Four tabs: **Content** (add / reorder / hide / edit blocks), **Design** (ten
 presets plus accent, background, mood, cards, corners and type), **You** (header,
 contact card, disclosure) and **Share** (QR download, link).
 
-### Saving is closed by default
+### Guardrails — powerful, hard to break
 
-Per-user authentication **does not exist yet**. `PUT /api/builder/:slug` writes
-only when `GOLODEX_EDITOR_TOKEN` is set and the browser presents a matching
-`gx_editor` cookie. Without it the endpoint returns 503 and the builder opens in
-preview mode.
+Self-service only works if a customer can't wreck what we set up for them:
 
-That is a single-operator lock for preview deploys: **one token currently grants
-edit rights to every page.** It is correct for one person and wrong the moment a
-second person signs up — real per-account auth has to land before the builder is
-opened to customers.
+- **Locked blocks.** Staff can lock a block (the compliance footer, the booking
+  link). The owner can still reorder and hide it — reversible, visible actions —
+  but cannot edit or delete it. Enforced in `PUT /api/builder/:slug` via
+  `lib/locks.ts`, not just greyed out in the UI, so editing the request body
+  doesn't get around it. Owners also cannot *add* locks.
+- **Undo**, on every change, before anything is saved.
+- **Delete confirmation** on every block.
+- **Version history.** A database trigger snapshots the previous document on
+  every save and keeps the last twenty. The History tab restores any of them,
+  and restoring is itself a save — so an accidental restore is undoable too.
+
+---
+
+## Accounts and access
+
+Authentication is **Supabase Auth magic links**. There are no passwords, and
+auth is not hand-rolled.
+
+### Roles
+
+| Role | Sees |
+| --- | --- |
+| `owner` | `/dashboard` and the builder for their own page only |
+| `staff` | Everything above, plus `/admin`: every account, every page, any builder |
+| `admin` | Everything above, plus the ability to create and re-role staff |
+
+Two rules hold everywhere:
+
+- **Identity comes from the verified session; permissions come from a fresh
+  read of the `accounts` row.** No role is ever read from a cookie or trusted
+  from a request body.
+- **Middleware is not the security boundary.** It runs on the edge without
+  service-role access, so it cannot see roles — it only redirects signed-out
+  visitors so they don't see a broken screen. Every page and route handler
+  re-checks permission server-side.
+
+### No self-signup
+
+`shouldCreateUser: false`, plus an active `accounts` row is required. A stranger
+who knows a customer's email cannot create an account, and the sign-in endpoint
+returns an identical response whether or not an address is registered, so it
+can't be used to enumerate customers.
+
+Staff create accounts in `/admin` → **New account**, which provisions the login,
+optionally builds their first page, and emails them a sign-in link.
+
+### Supabase setup
+
+1. Run both migrations (`supabase db push`, or paste them into the SQL editor).
+2. Set the env vars in `.env.example`.
+3. **Add your first admin by hand** — there is no bootstrap route, deliberately:
+
+   ```sql
+   -- After inviting yourself from the Supabase dashboard (Authentication → Users):
+   insert into public.accounts (user_id, email, full_name, role)
+   values ('<your auth user id>', 'you@example.com', 'Your Name', 'admin');
+   ```
+
+4. **Change the magic-link email template** (Authentication → Email Templates →
+   Magic Link) to use the token-hash flow:
+
+   ```
+   {{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=magiclink
+   ```
+
+   The default template uses PKCE, which only works in the browser that
+   requested the link — magic links get opened on phones all the time. The
+   callback accepts both flows, but this one survives switching device.
+
+5. Set **Site URL** and add `<your domain>/auth/callback` to the redirect
+   allowlist.
 
 ---
 
@@ -311,16 +375,44 @@ src/
     schema.ts    zod validation          color.ts    contrast-safe derivation
     ghl.ts       GoHighLevel client      repo.ts     persistence
     pagebuilder.ts  compose a page       slug.ts     slug rules + reserved words
+    auth.ts      session + authorization security.ts rate limits, URL/SQL guards
+    locks.ts     locked-block enforcement redirect.ts open-redirect guard
   data/seed.ts                   built-in /hlt and /demo pages
 ```
 
 ---
 
+## Security posture
+
+Verified by `npm test` (25 assertions in `tests/guards.test.ts`, each one
+covering a vulnerability that was genuinely reachable at some point):
+
+| Fixed | Was |
+| --- | --- |
+| Slug lookups use `.eq()` on a normalized slug | `.ilike()` treated `%` as a wildcard, so `/%` could resolve to — and grant edit rights on — an arbitrary page |
+| `resolveEmbed` rejects non-http(s) | `new URL()` accepts `javascript:`, and an iframe with a `javascript:` src executes it, so page content could script a visitor |
+| Admin search terms are stripped of PostgREST syntax | `,` `.` `(` `)` in a search term could restructure the `.or()` filter |
+| `safeNextPath` allowlists same-site paths | post-login `?next=` was an open-redirect sink |
+
+Also in place: CSP and the usual headers (`next.config.ts`), `no-store` on every
+signed-in route and API, RLS on every table with a `SECURITY DEFINER is_staff()`
+helper (pinned `search_path`), rate limits on the public write endpoints, and
+`timingSafeEqual` for API-key comparison.
+
+Known limits, stated rather than hidden:
+
+- **CSP allows `'unsafe-inline'` for scripts**, because the App Router injects an
+  inline bootstrap. Tightening it needs nonce plumbing through middleware. The
+  policy still blocks script from unnamed origins.
+- **Rate limits are per-instance and in-memory.** On serverless the real ceiling
+  is `limit x instances`. Anything that must hold globally needs Redis/Upstash.
+- **No audit log** of staff actions on customer pages. `page_versions` records
+  that a change came from staff, which is not the same thing.
+
+---
+
 ## Not built yet
 
-- **Per-account auth.** The single biggest gap. The builder exists and works,
-  but it is gated behind one shared operator token (see above). Nothing
-  multi-user ships until this does.
 - **The claim flow.** `claim_token` is generated and stored; the `/claim/:token`
   route that binds a gifted page to a new login is not written.
 - **Image uploads.** Photo fields take URLs; there's no uploader wired to

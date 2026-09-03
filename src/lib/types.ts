@@ -69,6 +69,13 @@ interface BlockBase {
   type: BlockType;
   /** Hidden blocks stay in the document but do not render. */
   hidden?: boolean;
+  /**
+   * Set by staff. The page owner can still reorder and hide a locked block, but
+   * cannot edit its content or delete it — enforced server-side on save, not
+   * just in the UI. This is what lets us hand someone a page they can safely
+   * tinker with without wrecking the compliance footer or the booking link.
+   */
+  locked?: boolean;
 }
 
 export interface LinkBlock extends BlockBase {

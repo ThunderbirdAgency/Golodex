@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getProfileBySlug, recordEvent } from "@/lib/repo";
+import { clientIp, rateLimit } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -12,6 +13,12 @@ const TrackSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  // Generous — a real visitor fires several of these per page — but bounded so
+  // nobody can inflate someone's analytics or fill the events table.
+  if (!rateLimit(`track:${clientIp(req)}`, 60, 60_000).ok) {
+    return new NextResponse(null, { status: 204 });
+  }
+
   let payload: unknown;
   try {
     payload = await req.json();

@@ -1,3 +1,5 @@
+import { safeFrameSrc } from "./security";
+
 /** Normalize the URLs people actually paste into a block into embeddable ones. */
 
 export type EmbedKind = "iframe" | "video" | "unknown";
@@ -27,9 +29,16 @@ export function resolveEmbed(rawUrl: string): ResolvedEmbed {
     return { kind: "unknown", src: rawUrl };
   }
 
+  // Reject anything that is not http(s) before it can reach a frame or media
+  // element. `new URL()` parses `javascript:` fine, and an iframe with a
+  // `javascript:` src executes it — page content is user-authored, so this is
+  // the boundary that stops one owner's block from scripting a visitor.
+  const safe = safeFrameSrc(u.toString());
+  if (!safe) return { kind: "unknown", src: "" };
+
   // Direct media files play natively — no third-party frame needed.
   if (/\.(mp4|webm|mov|m4v)$/i.test(u.pathname)) {
-    return { kind: "video", src: u.toString(), ratio: "16 / 9" };
+    return { kind: "video", src: safe, ratio: "16 / 9" };
   }
 
   const yt = youTubeId(u);
@@ -71,7 +80,7 @@ export function resolveEmbed(rawUrl: string): ResolvedEmbed {
   }
 
   // GHL calendars, Calendly, Cal.com and anything else already embeddable.
-  return { kind: "iframe", src: u.toString() };
+  return { kind: "iframe", src: safe };
 }
 
 /** Only allow schemes that are safe as an href. */

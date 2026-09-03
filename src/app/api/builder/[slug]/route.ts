@@ -1,28 +1,30 @@
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
+import { clientIp, rateLimit } from "@/lib/security";
 import { z } from "zod";
+import { authorizePageEdit } from "@/lib/auth";
 import { getProfileBySlug, updateProfileDoc } from "@/lib/repo";
 import { ProfileDocSchema, ThemeSchema } from "@/lib/schema";
+import { describeViolations, findLockViolations } from "@/lib/locks";
+import type { Block } from "@/lib/types";
 
 export const runtime = "nodejs";
 
 /**
  * Save endpoint for the builder.
  *
- * SECURITY: per-user authentication does not exist yet, so this is closed by
- * default. It writes only when `GOLODEX_EDITOR_TOKEN` is set AND the browser
- * presents a matching `gx_editor` cookie — a deliberate single-operator lock
- * for preview deploys.
+ * Authorization is per-account: the page's owner, or staff. The previous
+ * shared-token gate is gone — it granted edit rights on every page to whoever
+ * held one string, which was never going to survive a second customer.
  *
- * This must be replaced with real per-account auth before anyone but the
- * operator can reach the builder; as written, one token grants edit rights to
- * every page, which is correct for a single-tenant preview and wrong the moment
- * a second person signs up.
+ * Fields the builder is not allowed to move are pinned from the stored row
+ * rather than taken from the request: slug, status, account ownership, and the
+ * GHL location. A save can change how a page looks and reads; it can never
+ * change who owns it or where its leads go.
  */
 
 const SaveSchema = z.object({
   doc: ProfileDocSchema.extend({
+    // Accepted so the client can round-trip its own state, then ignored.
     slug: z.string().max(64).optional(),
     id: z.string().max(64).optional(),
     status: z.enum(["draft", "published", "claimable"]).optional(),
@@ -30,39 +32,21 @@ const SaveSchema = z.object({
   }),
 });
 
-function tokensMatch(a: string, b: string): boolean {
-  const x = Buffer.from(a);
-  const y = Buffer.from(b);
-  return x.length === y.length && timingSafeEqual(x, y);
-}
-
 export async function PUT(req: Request, ctx: { params: Promise<{ slug: string }> }) {
-  const expected = process.env.GOLODEX_EDITOR_TOKEN?.trim();
-  if (!expected) {
-    return NextResponse.json(
-      {
-        error:
-          "Saving is switched off on this deployment. Set GOLODEX_EDITOR_TOKEN to enable the builder.",
-      },
-      { status: 503 },
-    );
-  }
-
-  const presented = (await cookies()).get("gx_editor")?.value;
-  if (!presented || !tokensMatch(presented, expected)) {
-    return NextResponse.json({ error: "You're not signed in to edit this page." }, { status: 401 });
+  if (!rateLimit(`builder-save:${clientIp(req)}`, 40, 60000).ok) {
+    return NextResponse.json({ error: "Too many requests." }, { status: 429 });
   }
 
   const { slug } = await ctx.params;
-  const existing = await getProfileBySlug(slug);
-  if (!existing) {
-    return NextResponse.json({ error: "Page not found." }, { status: 404 });
+
+  const auth = await authorizePageEdit(slug);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
-  if (!existing.rowId) {
-    return NextResponse.json(
-      { error: "This is a built-in example page and can't be saved over." },
-      { status: 409 },
-    );
+
+  const existing = await getProfileBySlug(slug);
+  if (!existing || !existing.rowId) {
+    return NextResponse.json({ error: "Page not found." }, { status: 404 });
   }
 
   let payload: unknown;
@@ -83,10 +67,26 @@ export async function PUT(req: Request, ctx: { params: Promise<{ slug: string }>
     );
   }
 
-  // The slug and status are not the builder's to change.
+  const incoming = parsed.data.doc;
+
+  // Locked blocks: staff set them, owners cannot work around them.
+  if (!auth.staff) {
+    const violations = findLockViolations(
+      existing.blocks as Block[],
+      (incoming.blocks ?? []) as Block[],
+    );
+    if (violations.length) {
+      return NextResponse.json(
+        { error: describeViolations(violations), violations },
+        { status: 403 },
+      );
+    }
+  }
+
   const next = {
     ...existing,
-    ...parsed.data.doc,
+    ...incoming,
+    // Not the builder's to change.
     slug: existing.slug,
     status: existing.status,
   };
@@ -94,10 +94,13 @@ export async function PUT(req: Request, ctx: { params: Promise<{ slug: string }>
   delete (next as Record<string, unknown>).ghlLocationId;
 
   try {
+    // The database trigger snapshots the outgoing version, so this is
+    // recoverable from the History panel.
     await updateProfileDoc(existing.slug, next);
     return NextResponse.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not save.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[builder] save failed", message);
+    return NextResponse.json({ error: "Could not save. Please try again." }, { status: 500 });
   }
 }

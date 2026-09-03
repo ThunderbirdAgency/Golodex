@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
+import { clientIp, rateLimit } from "@/lib/security";
 import { z } from "zod";
 import { authenticate } from "@/lib/apikey";
 import { createProfile, slugIsTaken } from "@/lib/repo";
@@ -78,6 +79,10 @@ async function allocateSlug(preferred: string): Promise<string> {
 }
 
 export async function POST(req: Request) {
+  if (!rateLimit(`v1-create:${clientIp(req)}`, 30, 60000).ok) {
+    return NextResponse.json({ error: "Too many requests." }, { status: 429 });
+  }
+
   const auth = await authenticate(req, "pages:write");
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
