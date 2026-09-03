@@ -384,15 +384,28 @@ src/
 
 ## Security posture
 
-Verified by `npm test` (25 assertions in `tests/guards.test.ts`, each one
+Verified by `npm test` (30 assertions in `tests/guards.test.ts`, each one
 covering a vulnerability that was genuinely reachable at some point):
 
 | Fixed | Was |
 | --- | --- |
+| **Write privileges revoked** from `anon`/`authenticated` on every table (`0003`) | Supabase grants `ALL` on `public` by default, so a row-scoped UPDATE policy let a customer PATCH their own `accounts` row via PostgREST and set `role: "admin"` — becoming staff over every account and page. The same hole on `profiles.doc` bypassed lock enforcement and could set a `verified` badge. |
+| Restore re-applies current locked blocks | A snapshot taken *before* a block was locked doesn't contain it, so restoring an old version deleted the block and its lock together — a complete bypass of every lock |
+| Duplicate block ids rejected | Lock checks keyed blocks by id into a `Map`, which keeps the *last* entry: a payload with both a tampered and a pristine copy passed while the page rendered the tampered one |
 | Slug lookups use `.eq()` on a normalized slug | `.ilike()` treated `%` as a wildcard, so `/%` could resolve to — and grant edit rights on — an arbitrary page |
 | `resolveEmbed` rejects non-http(s) | `new URL()` accepts `javascript:`, and an iframe with a `javascript:` src executes it, so page content could script a visitor |
-| Admin search terms are stripped of PostgREST syntax | `,` `.` `(` `)` in a search term could restructure the `.or()` filter |
+| Admin search terms stripped of PostgREST syntax | `,` `.` `(` `)` in a search term could restructure the `.or()` filter |
 | `safeNextPath` allowlists same-site paths | post-login `?next=` was an open-redirect sink |
+| Staff limited to customer accounts | a staff login could suspend an admin and lock the owner out |
+
+The first three were found by a dedicated adversarial review pass *after* the
+feature work looked finished, which is the argument for running one.
+
+**The rule the first finding teaches: an RLS policy is not a column-level
+control.** Row scoping says *which rows*; the `GRANT` says *which columns*. All
+writes in this app go through the service-role client, so `authenticated` holds
+no write privilege at all — the API is the only write path, enforced by the
+database rather than by convention.
 
 Also in place: CSP and the usual headers (`next.config.ts`), `no-store` on every
 signed-in route and API, RLS on every table with a `SECURITY DEFINER is_staff()`

@@ -21,7 +21,7 @@
 import { safeNextPath } from "@/lib/redirect";
 import { resolveEmbed, safeHref } from "@/lib/embeds";
 import { safeFrameSrc, safeImageSrc, sanitizeSearchTerm } from "@/lib/security";
-import { findLockViolations } from "@/lib/locks";
+import { findLockViolations, preserveLockedBlocks } from "@/lib/locks";
 import { normalizeSlug, validateSlug } from "@/lib/slug";
 import type { Block } from "@/lib/types";
 
@@ -90,6 +90,34 @@ eq("duplicate-id smuggling caught",
     stored[1],
   ]).map((v) => v.kind),
   ["duplicate_id"]);
+
+console.log("\n-- restore cannot drop a lock (preserveLockedBlocks) --");
+{
+  const current: Block[] = [
+    { id: "legal", type: "text", content: "NMLS #123456", locked: true },
+    { id: "bio", type: "text", content: "current bio" },
+  ];
+  // A snapshot from before the block was locked simply has no `legal` block.
+  const oldSnapshot: Block[] = [{ id: "bio", type: "text", content: "old bio" }];
+  const merged = preserveLockedBlocks(current, oldSnapshot);
+  eq("locked block re-appended after restore",
+    merged.map((b) => b.id).sort(), ["bio", "legal"]);
+  eq("owner's own content still restored",
+    (merged.find((b) => b.id === "bio") as { content: string }).content, "old bio");
+
+  // A snapshot containing a tampered copy must not win over the live lock.
+  const tampered: Block[] = [
+    { id: "legal", type: "text", content: "NMLS #000000", locked: true },
+    { id: "bio", type: "text", content: "old bio" },
+  ];
+  eq("locked content wins over the snapshot",
+    (preserveLockedBlocks(current, tampered).find((b) => b.id === "legal") as { content: string })
+      .content,
+    "NMLS #123456");
+
+  eq("no locks means verbatim restore",
+    preserveLockedBlocks([{ id: "bio", type: "text", content: "x" }], oldSnapshot), oldSnapshot);
+}
 
 console.log(fail === 0 ? "\nALL GUARD TESTS PASSED" : `\n${fail} GUARD TEST(S) FAILED`);
 process.exit(fail === 0 ? 0 : 1);

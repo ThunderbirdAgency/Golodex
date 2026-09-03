@@ -98,3 +98,37 @@ export function describeViolations(violations: LockViolation[]): string {
 
   return `Some parts of this page are locked by Golodex: ${parts.join(", ")}. Reordering and hiding are fine — get in touch if you need one changed.`;
 }
+
+/**
+ * Re-apply the currently locked blocks on top of a restored document.
+ *
+ * Restoring an old version was a complete bypass of every lock: a snapshot from
+ * before a block was locked simply does not contain it, so restoring deleted
+ * the block and its lock together.
+ *
+ * Rejecting the restore would be the wrong fix — the customer's own content
+ * should still be recoverable. So the restore proceeds and the locked blocks
+ * win: their current content replaces whatever the snapshot held, and any that
+ * the snapshot dropped entirely are appended back.
+ */
+export function preserveLockedBlocks(current: Block[], restored: Block[]): Block[] {
+  const lockedNow = current.filter((b) => b.locked);
+  if (!lockedNow.length) return restored;
+
+  const lockedById = new Map(lockedNow.map((b) => [b.id, b]));
+  const seen = new Set<string>();
+
+  const merged = restored.map((block) => {
+    const locked = lockedById.get(block.id);
+    if (!locked) return block;
+    seen.add(block.id);
+    return locked;
+  });
+
+  // Locked blocks the snapshot predates, or that were removed while unlocked.
+  for (const locked of lockedNow) {
+    if (!seen.has(locked.id)) merged.push(locked);
+  }
+
+  return merged;
+}

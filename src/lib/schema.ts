@@ -190,6 +190,28 @@ export const ContactCardSchema = z.object({
   license: z.string().max(80).optional(),
 });
 
+/**
+ * Block ids must be unique. Enforced here as well as in `lib/locks.ts` because
+ * a duplicate id is how a tampered copy of a locked block gets smuggled past a
+ * check that keys blocks by id.
+ */
+const UniqueBlocks = z
+  .array(BlockSchema)
+  .max(60)
+  .superRefine((blocks, ctx) => {
+    const seen = new Set<string>();
+    blocks.forEach((block, i) => {
+      if (seen.has(block.id)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [i, "id"],
+          message: "Duplicate block id.",
+        });
+      }
+      seen.add(block.id);
+    });
+  });
+
 export const ProfileDocSchema = z.object({
   displayName: z.string().min(1).max(80),
   headline: z.string().max(120).optional(),
@@ -199,7 +221,7 @@ export const ProfileDocSchema = z.object({
   logo: z.string().url().optional(),
   verified: z.boolean().optional(),
   theme: ThemeSchema.optional(),
-  blocks: z.array(BlockSchema).max(60).optional(),
+  blocks: UniqueBlocks.optional(),
   contact: ContactCardSchema.optional(),
   disclosure: z.string().max(600).optional(),
   seo: z

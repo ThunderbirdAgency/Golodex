@@ -3,7 +3,8 @@ import { z } from "zod";
 import { authorizePageEdit } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getProfileBySlug, updateProfileDoc } from "@/lib/repo";
-import type { Profile } from "@/lib/types";
+import { preserveLockedBlocks } from "@/lib/locks";
+import type { Block, Profile } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -74,8 +75,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
   const existing = await getProfileBySlug(slug);
   if (!existing) return NextResponse.json({ error: "Page not found." }, { status: 404 });
 
+  const snapshot = version.doc as Profile;
+
+  // A snapshot taken before a block was locked does not contain it, so a plain
+  // restore would delete the block and its lock together — which made this
+  // endpoint a complete bypass of every lock the save route enforces. Staff
+  // restore verbatim; for an owner the current locked blocks are re-applied.
+  const blocks = auth.staff
+    ? (snapshot.blocks ?? [])
+    : preserveLockedBlocks(existing.blocks as Block[], snapshot.blocks ?? []);
+
   const restored = {
-    ...(version.doc as Profile),
+    ...snapshot,
+    blocks,
     slug: existing.slug,
     status: existing.status,
   };
