@@ -38,7 +38,10 @@ const hlt: Profile = {
     phone: "", // TODO: add the direct line — this powers the tap-to-call button
     website: "https://erikmiller.team",
     address: "Glendale, AZ",
-    license: "NMLS #0000000", // TODO: real NMLS number required before launch
+    // Intentionally absent. A placeholder licence number renders as a real one
+    // to anyone reading the page, so the field stays empty until the true NMLS
+    // number is supplied — the page simply omits the licence line.
+    license: undefined,
   },
   blocks: [
     {
@@ -146,7 +149,7 @@ const demo: Profile = {
   id: "seed-demo",
   slug: "demo",
   displayName: "Jordan Avery",
-  headline: "Realtor® · Scottsdale, AZ",
+  headline: "Realtor® · Scottsdale, AZ · Example page",
   bio: "Helping people buy and sell across the Valley. 120+ families moved since 2019.",
   verified: true,
   status: "published",
@@ -310,7 +313,8 @@ const demo: Profile = {
       tags: ["golodex", "demo"],
     },
   ],
-  disclosure: "Avery Group · Licensed in Arizona. Equal Housing Opportunity.",
+  disclosure:
+    "This is a Golodex example page. Jordan Avery is not a real agent, and the listings, testimonials and figures shown are illustrative.",
 };
 
 export const SEED_PROFILES: Profile[] = [hlt, demo];
