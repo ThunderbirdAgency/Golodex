@@ -253,7 +253,7 @@ export function Builder({
             >
               <div className="absolute left-1/2 top-4 z-10 h-5 w-20 -translate-x-1/2 rounded-full bg-[#111318]" />
               <div
-                className="h-[36rem] overflow-y-auto overflow-x-hidden rounded-[2rem]"
+                className="h-[36rem] overflow-y-auto overflow-x-hidden gx-hide-scrollbar rounded-[2rem]"
                 style={{ ...style, backgroundColor: "var(--gx-bg)" }}
               >
                 <div className="gx-root" style={{ backgroundAttachment: "scroll", minHeight: "100%" }}>

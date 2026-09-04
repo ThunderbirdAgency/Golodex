@@ -31,7 +31,7 @@ export function PhonePreview({ profile }: { profile: Profile }) {
         {/* Notch */}
         <div className="absolute left-1/2 top-4 z-10 h-6 w-24 -translate-x-1/2 rounded-full bg-[#111318]" />
         <div
-          className="h-[38rem] overflow-y-auto overflow-x-hidden rounded-[2.1rem]"
+          className="h-[38rem] overflow-y-auto overflow-x-hidden gx-hide-scrollbar rounded-[2.1rem]"
           style={{ ...themeStyle(theme), backgroundColor: "var(--gx-bg)" }}
         >
           <div

@@ -149,9 +149,10 @@ const demo: Profile = {
   id: "seed-demo",
   slug: "demo",
   displayName: "Jordan Avery",
-  headline: "Realtor® · Scottsdale, AZ · Example page",
+  headline: "Realtor® · Scottsdale, AZ",
   bio: "Helping people buy and sell across the Valley. 120+ families moved since 2019.",
   verified: true,
+  example: true,
   status: "published",
   theme: themeFromPreset("ivory")!,
   contact: {

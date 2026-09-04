@@ -350,3 +350,15 @@ textarea.bf-input {
   color: #14161a;
   background: #fff;
 }
+
+/* Device mock screens scroll, but a native scrollbar track running down the
+   middle of a phone frame breaks the illusion — hide the chrome, keep the
+   scrolling. */
+.gx-hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.gx-hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}

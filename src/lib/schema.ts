@@ -220,6 +220,7 @@ export const ProfileDocSchema = z.object({
   cover: z.string().url().optional(),
   logo: z.string().url().optional(),
   verified: z.boolean().optional(),
+  example: z.boolean().optional(),
   theme: ThemeSchema.optional(),
   blocks: UniqueBlocks.optional(),
   contact: ContactCardSchema.optional(),

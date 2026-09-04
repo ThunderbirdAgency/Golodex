@@ -308,6 +308,12 @@ export interface Profile {
   /** Small logo shown beside the name — brokerage, team, lender. */
   logo?: string;
   verified?: boolean;
+  /**
+   * Marks a demonstration page. Renders a visible badge so an invented persona
+   * is never mistaken for a real person — the honest label belongs in its own
+   * element, not appended to the headline.
+   */
+  example?: boolean;
   theme: Theme;
   blocks: Block[];
   contact?: ContactCard;

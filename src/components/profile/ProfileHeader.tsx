@@ -7,7 +7,7 @@ import { Avatar, SmartImage } from "./Media";
  * scrolls. Name, role, and one line of proof, nothing else competing.
  */
 export function ProfileHeader({ profile }: { profile: Profile }) {
-  const { displayName, headline, bio, avatar, cover, logo, verified } = profile;
+  const { displayName, headline, bio, avatar, cover, logo, verified, example } = profile;
 
   return (
     <header className="gx-rise">
@@ -56,6 +56,18 @@ export function ProfileHeader({ profile }: { profile: Profile }) {
           >
             {headline}
           </p>
+        ) : null}
+
+        {example ? (
+          <span
+            className="mt-2.5 rounded-full px-2.5 py-1 text-[0.6875rem] font-semibold uppercase tracking-wide"
+            style={{
+              background: "var(--gx-accent-soft)",
+              color: "var(--gx-accent)",
+            }}
+          >
+            Example page
+          </span>
         ) : null}
 
         {logo ? (
