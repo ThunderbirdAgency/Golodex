@@ -15,10 +15,17 @@ export interface ProfileRecord extends Profile {
   /** Present only for database-backed rows. */
   rowId?: string;
   ghlLocationId?: string | null;
+  /** Owning account, needed to gate paid features at render time. */
+  accountId?: string | null;
+  accountPlan?: string;
 }
 
 function rowToProfile(row: Record<string, unknown>): ProfileRecord {
   const doc = (row.doc ?? {}) as Profile;
+  // Supabase returns an embedded row as an object, or an array on some shapes.
+  const embedded = row.accounts as { plan?: string } | { plan?: string }[] | null | undefined;
+  const account = Array.isArray(embedded) ? embedded[0] : embedded;
+
   return {
     ...doc,
     id: String(row.id),
@@ -26,6 +33,9 @@ function rowToProfile(row: Record<string, unknown>): ProfileRecord {
     slug: String(row.slug),
     status: (row.status as Profile["status"]) ?? doc.status ?? "draft",
     ghlLocationId: (row.ghl_location_id as string | null) ?? null,
+    accountId: (row.account_id as string | null) ?? null,
+    // Seed and unowned pages behave as free.
+    accountPlan: account?.plan ?? "free",
   };
 }
 
@@ -39,7 +49,7 @@ export async function getProfileBySlug(slug: string): Promise<ProfileRecord | nu
   if (client) {
     const { data, error } = await client
       .from("profiles")
-      .select("id, slug, status, doc, ghl_location_id")
+      .select("id, slug, status, doc, ghl_location_id, account_id, accounts(plan)")
       .eq("slug", key)
       .maybeSingle();
 

@@ -2,6 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getProfileBySlug } from "@/lib/repo";
+import { supabaseAdmin } from "@/lib/supabase";
+import { planOf } from "@/lib/plans";
 import type { AgentBlock, Block, Profile } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -206,6 +208,44 @@ export async function POST(req: Request) {
       { error: "This page doesn't have an assistant." },
       { status: 404 },
     );
+  }
+
+  // The assistant is a paid feature, and it costs us money per reply.
+  const plan = planOf(profile.accountPlan);
+  if (!plan.limits.aiAssistant) {
+    return NextResponse.json(
+      { error: "The assistant isn't switched on for this page." },
+      { status: 402 },
+    );
+  }
+
+  // Meter before calling Anthropic. A page that gets shared widely must not be
+  // able to cost more than the subscription brings in, so the ceiling is hard
+  // and the increment is atomic — concurrent visitors cannot both slip past it.
+  const admin = supabaseAdmin();
+  if (admin && profile.accountId) {
+    const { data: underCap, error: meterError } = await admin.rpc("consume_ai_reply", {
+      p_account_id: profile.accountId,
+      p_limit: plan.limits.aiRepliesPerMonth,
+    });
+
+    if (meterError) {
+      // Fail closed: an unmeterable reply is an unbounded bill.
+      console.error("[agent] usage metering failed", meterError.message);
+      return NextResponse.json(
+        { error: "The assistant is unavailable right now." },
+        { status: 503 },
+      );
+    }
+
+    if (underCap === false) {
+      return NextResponse.json(
+        {
+          error: `${profile.displayName.split(" ")[0]}'s assistant has answered its limit of questions this month. Use the contact form and they'll reply personally.`,
+        },
+        { status: 429 },
+      );
+    }
   }
 
   const client = new Anthropic({ apiKey });

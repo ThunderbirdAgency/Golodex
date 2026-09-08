@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getAccount } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { Shell } from "@/components/app/Shell";
+import { BillingCard } from "@/components/app/BillingCard";
 
 export const metadata: Metadata = {
   title: "My page",
@@ -46,6 +47,30 @@ export default async function DashboardPage() {
       ])
     : [{ count: 0 }, { count: 0 }];
 
+  // Billing + this month's assistant usage, for the plan card.
+  const billing = admin
+    ? (
+        await admin
+          .from("accounts")
+          .select("subscription_status, current_period_end")
+          .eq("id", account.id)
+          .maybeSingle()
+      ).data
+    : null;
+
+  const period = new Date();
+  const periodKey = `${period.getUTCFullYear()}-${String(period.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  const aiUsed = admin
+    ? ((
+        await admin
+          .from("ai_usage")
+          .select("replies")
+          .eq("account_id", account.id)
+          .eq("period", periodKey)
+          .maybeSingle()
+      ).data?.replies as number | undefined) ?? 0
+    : 0;
+
   const recentLeads = admin && pageIds.length
     ? ((
         await admin
@@ -72,6 +97,13 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-6">
+          <BillingCard
+            plan={account.plan}
+            status={(billing?.subscription_status as string | null) ?? null}
+            renewsAt={(billing?.current_period_end as string | null) ?? null}
+            aiUsed={aiUsed}
+          />
+
           <div className="grid gap-3 sm:grid-cols-3">
             <Stat label="Page views" value={viewCount?.count ?? 0} />
             <Stat label="Enquiries" value={leadCount?.count ?? 0} />

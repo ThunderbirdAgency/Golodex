@@ -59,7 +59,7 @@ export default function HomePage() {
             Live example
           </a>
           <a
-            href="#claim"
+            href="/pricing"
             className="rounded-full bg-[#14161a] px-4 py-2 text-sm font-semibold text-white transition-transform hover:-translate-y-px"
           >
             Get your page
@@ -87,7 +87,7 @@ export default function HomePage() {
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <a
-              href="#claim"
+              href="/pricing"
               className="rounded-full bg-[#14161a] px-6 py-3 text-[0.9375rem] font-semibold text-white transition-transform hover:-translate-y-px"
             >
               Claim your golodex.com/name
@@ -212,7 +212,7 @@ Authorization: Bearer gx_live_…
             golodex.com/<span className="font-semibold text-[#14161a]">yourname</span>
           </p>
           <a
-            href="mailto:hello@golodex.com?subject=I%20want%20my%20Golodex%20page"
+            href="/pricing"
             className="mt-8 inline-block rounded-full bg-[#14161a] px-7 py-3.5 text-[0.9375rem] font-semibold text-white transition-transform hover:-translate-y-px"
           >
             Get started
@@ -223,9 +223,11 @@ Authorization: Bearer gx_live_…
       <footer className="border-t border-[#ece9e3] py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 text-sm text-[#8a9099] sm:flex-row">
           <span>© {new Date().getFullYear()} Golodex · Thunderbird Agency · Glendale, AZ</span>
-          <a href="/hlt" className="hover:text-[#14161a]">
-            golodex.com/hlt
-          </a>
+          <span className="flex gap-4">
+            <a href="/pricing" className="hover:text-[#14161a]">Pricing</a>
+            <a href="/legal/terms" className="hover:text-[#14161a]">Terms</a>
+            <a href="/legal/privacy" className="hover:text-[#14161a]">Privacy</a>
+          </span>
         </div>
       </footer>
     </main>

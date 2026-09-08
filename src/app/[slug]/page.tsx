@@ -7,6 +7,7 @@ import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { Blocks } from "@/components/profile/Blocks";
 import { ActionBar } from "@/components/profile/ActionBar";
 import { ViewTracker } from "@/components/profile/ViewTracker";
+import { planOf, PREMIUM_BLOCK_TYPES } from "@/lib/plans";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -44,12 +45,20 @@ export default async function ProfilePage({ params }: Params) {
 
   if (!profile || profile.status === "draft") notFound();
 
+  // Downgrading must never delete content. Paid-only blocks stay in the
+  // document and simply stop rendering, so an expired card costs someone their
+  // extras for a month, not their work.
+  const plan = planOf(profile.accountPlan);
+  const blocks = plan.limits.premiumBlocks
+    ? profile.blocks
+    : profile.blocks.filter((b) => !PREMIUM_BLOCK_TYPES.has(b.type));
+
   return (
     <main className="gx-root" style={themeStyle(profile.theme)}>
       <ViewTracker slug={profile.slug} />
       <div className="gx-shell">
         <ProfileHeader profile={profile} />
-        <Blocks blocks={profile.blocks} slug={profile.slug} ownerName={profile.displayName} />
+        <Blocks blocks={blocks} slug={profile.slug} ownerName={profile.displayName} />
 
         {profile.disclosure ? (
           <p
@@ -69,6 +78,7 @@ export default async function ProfilePage({ params }: Params) {
           </p>
         ) : null}
 
+        {plan.limits.removeBranding ? null : (
         <footer className="mt-8 flex justify-center">
           <a
             href={env.siteUrl}
@@ -84,6 +94,7 @@ export default async function ProfilePage({ params }: Params) {
             Made with Golodex
           </a>
         </footer>
+        )}
       </div>
 
       <ActionBar slug={profile.slug} contact={profile.contact} />
