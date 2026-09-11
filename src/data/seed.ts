@@ -7,8 +7,11 @@ import { themeFromPreset } from "@/lib/themes";
  * These render with zero configuration so the app is demoable before Supabase
  * exists. Once a slug is present in the database, the database wins.
  *
- * `hlt` is a build-time fixture and ships as a draft, so it is never served
- * publicly and never enters the sitemap. `demo` is the page to point people at.
+ * `hlt` carries Erik's real licensing and contact details, taken from
+ * erikmillerhlt.com. The NMLS numbers there are distinct and easy to confuse:
+ * #263103 is Erik's own loan-officer licence, #715386 is the company's
+ * (Patriot Home Mortgage, a dba of Belem Servicing LLC). Only the individual
+ * number belongs on a page in his name.
  */
 
 const hlt: Profile = {
@@ -17,13 +20,9 @@ const hlt: Profile = {
   displayName: "Erik Miller",
   headline: "Home Loan Team · Glendale, AZ",
   bio: "Straight answers on mortgages, first-time buying, and refinancing. Ask me anything — no pressure, no jargon.",
-  avatar: undefined,
+  avatar: "https://www.erikmillerhlt.com/assets/img/erik-miller-headshot.webp",
   verified: true,
-  // Draft, so it never renders publicly or enters the sitemap. This page was a
-  // build-time fixture, not a real product page, and it carries no licence
-  // number. Publishing it would put an unverified named mortgage page on a
-  // public domain.
-  status: "draft",
+  status: "published",
   theme: {
     ...themeFromPreset("slate")!,
     accent: "#1d4ed8",
@@ -31,16 +30,14 @@ const hlt: Profile = {
   contact: {
     firstName: "Erik",
     lastName: "Miller",
-    organization: "Home Loan Team",
-    title: "Mortgage Advisor",
-    email: "EMiller@erikmillerhlt.com",
-    phone: "", // TODO: add the direct line — this powers the tap-to-call button
-    website: "https://erikmiller.team",
+    organization: "Patriot Home Mortgage",
+    title: "Mortgage Expert",
+    email: "Erik.Miller@PatriotHomeMortgage.com",
+    phone: "+16236968683",
+    website: "https://erikmillerhlt.com",
     address: "Glendale, AZ",
-    // Intentionally absent. A placeholder licence number renders as a real one
-    // to anyone reading the page, so the field stays empty until the true NMLS
-    // number is supplied — the page simply omits the licence line.
-    license: undefined,
+    // Erik's individual loan-officer licence — never the company's #715386.
+    license: "NMLS #263103 · AZ LO-0927960",
   },
   blocks: [
     {
@@ -118,21 +115,21 @@ const hlt: Profile = {
       id: "site",
       type: "link",
       label: "Visit my website",
-      subtitle: "erikmiller.team",
+      subtitle: "erikmillerhlt.com",
       icon: "globe",
-      url: "https://erikmiller.team",
+      url: "https://erikmillerhlt.com",
     },
     {
       id: "nmls",
       type: "link",
       label: "Verify my license",
-      subtitle: "NMLS Consumer Access",
+      subtitle: "NMLS #263103 · Consumer Access",
       icon: "check",
-      url: "https://www.nmlsconsumeraccess.org/",
+      url: "https://www.nmlsconsumeraccess.org/EntityDetails.aspx/INDIVIDUAL/263103",
     },
   ],
   disclosure:
-    "Erik Miller · Home Loan Team. All loans subject to credit approval. Rates and terms subject to change without notice. Equal Housing Lender.",
+    "Erik Miller, Mortgage Expert · NMLS #263103 · AZ LO-0927960. Patriot Home Mortgage, a dba of Belem Servicing LLC · Company NMLS #715386 · AZ NMLS #BK-976140. Licensed in Arizona. All loans subject to credit approval. Rates and terms subject to change without notice. Equal Housing Lender.",
   seo: {
     title: "Erik Miller · Home Loan Team",
     description:
