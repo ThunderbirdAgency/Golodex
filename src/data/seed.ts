@@ -7,10 +7,8 @@ import { themeFromPreset } from "@/lib/themes";
  * These render with zero configuration so the app is demoable before Supabase
  * exists. Once a slug is present in the database, the database wins.
  *
- * NOTE: fields marked TODO carry placeholders because the real values were not
- * available when this was seeded. `license` in particular MUST be filled in
- * with the real NMLS number before this page is pointed at production — a
- * mortgage page showing a wrong or fake NMLS ID is a compliance problem.
+ * `hlt` is a build-time fixture and ships as a draft, so it is never served
+ * publicly and never enters the sitemap. `demo` is the page to point people at.
  */
 
 const hlt: Profile = {
@@ -19,12 +17,13 @@ const hlt: Profile = {
   displayName: "Erik Miller",
   headline: "Home Loan Team · Glendale, AZ",
   bio: "Straight answers on mortgages, first-time buying, and refinancing. Ask me anything — no pressure, no jargon.",
-  // TODO: add Erik's real headshot. Until then the page renders an "EM"
-  // monogram — a stock photo of someone else on a named mortgage page would
-  // misrepresent him.
   avatar: undefined,
   verified: true,
-  status: "published",
+  // Draft, so it never renders publicly or enters the sitemap. This page was a
+  // build-time fixture, not a real product page, and it carries no licence
+  // number. Publishing it would put an unverified named mortgage page on a
+  // public domain.
+  status: "draft",
   theme: {
     ...themeFromPreset("slate")!,
     accent: "#1d4ed8",
